@@ -35,7 +35,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Continue'
-          npm run desktop:pack
+          npm run build
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          npx electron-builder --win nsis --publish never
           $packExit = $LASTEXITCODE
 
           $installer = Get-ChildItem -LiteralPath dist -Filter '*Setup*.exe' -File |
@@ -55,6 +60,7 @@ jobs:
           $assetPath = Join-Path $installer.DirectoryName $assetName
           Copy-Item -LiteralPath $installer.FullName -Destination $assetPath -Force
           "ASSET_PATH=$assetPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          exit 0
 
       - name: Upload release asset
         shell: pwsh
