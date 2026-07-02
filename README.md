@@ -2,7 +2,7 @@
 
 **Language:** English | [中文](README.zh-CN.md)
 
-Codex Watcher is a Windows desktop widget for keeping Codex 5-hour quota, weekly quota, and available reset credits visible at a glance.
+Codex Watcher is a Windows desktop widget for keeping Codex 5-hour quota, weekly quota, and available reset credits visible at a glance, helping you stay aware of quota status in real time.
 
 The web dashboard is included as a secondary entry for debugging, previewing, and fallback viewing.
 
@@ -10,7 +10,7 @@ The web dashboard is included as a secondary entry for debugging, previewing, an
 
 ## Windows Desktop Card
 
-The desktop card uses Electron to host the compact `/widget` page in a small Windows desktop window.
+The desktop card uses Electron to host a Next.js page in a small Windows desktop window.
 
 It shows Codex 5-hour quota, weekly quota, available reset count, and the reset tickets that expire soonest.
 
@@ -19,14 +19,6 @@ It gives short usage guidance based on quota levels and reset expiry times, help
 It supports a tray menu, show or hide actions, refresh, always-on-top, position lock, launch at startup, and background transparency control.
 
 Window position, size, always-on-top, lock, startup, and transparency settings are saved in the local Electron user data directory.
-
-## Features
-
-- Windows desktop card first, designed to stay in a corner of the desktop for ongoing quota checks.
-- Reads the local Codex login state in read-only mode and never redeems reset credits.
-- Refreshes every 5 minutes and can also be refreshed manually from the card or tray.
-- Shows reset tickets by expiry time, with reminders for credits that are about to expire.
-- Keeps the web dashboard as a fuller browser-based inspection view.
 
 ## Requirements
 
@@ -113,7 +105,7 @@ The project does not redeem reset credits; it only displays quota status and usa
 
 ## Credits
 
-Assets and business rules are based on the MIT-licensed upstream project.
+This project is based on the upstream project. Thanks to @jordan-edai.
 
 https://github.com/jordan-edai/codex-reset-watcher
 
