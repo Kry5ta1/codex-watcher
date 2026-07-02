@@ -1,0 +1,54 @@
+{
+  "name": "codex-watcher",
+  "version": "0.1.0",
+  "description": "本地只读的 Codex 额度监控面板和 Windows 桌面卡片。",
+  "private": true,
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "author": "Codex Watcher contributors",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node desktop/prepare-standalone.cjs",
+    "desktop:dev": "set CODEX_WIDGET_DEV=1&& electron .",
+    "desktop:pack": "npm run build && electron-builder --win nsis",
+    "desktop:start": "npm run build && electron .",
+    "start": "next start",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "overrides": {
+    "postcss": "8.5.15"
+  },
+  "build": {
+    "appId": "local.codex-watcher",
+    "productName": "Codex Watcher",
+    "asar": false,
+    "files": [
+      "desktop/**/*",
+      ".next/standalone/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "desktop/icon.ico",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^42.5.1",
+    "electron-builder": "^26.15.3"
+  }
+}
