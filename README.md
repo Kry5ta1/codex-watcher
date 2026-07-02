@@ -80,12 +80,6 @@ Codex Watcher reads the local Codex auth file on your machine and calls Codex/Ch
 
 Do not commit real tokens, account IDs, private keys, or `.env*.local` files.
 
-## Project Docs
-
-- Runtime and delivery notes: `README.md`
-- Development history and code boundaries: `docs/development-summary.md`
-- Local API and upstream interface notes: `docs/api-notes.md`
-
 ## Credits
 
 Assets and business rules are based on the MIT-licensed upstream project:
