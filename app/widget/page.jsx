@@ -92,8 +92,8 @@ export default function Widget() {
     () => [requestError, ...(status?.errors ?? [])].filter(Boolean),
     [requestError, status]
   );
-  const fiveHour = status?.windows?.find((item) => item.kind === "fiveHour");
-  const weekly = status?.windows?.find((item) => item.kind === "weekly");
+  const usageWindows = status?.windows ?? [];
+  const meterWindows = usageWindows.length > 0 ? usageWindows : [null];
   const credits = status?.credits ?? [];
   const expiringCredits = credits.filter((credit) => credit.isAvailable).slice(0, 3);
   const opacity = 1 - transparency / 100;
@@ -137,9 +137,18 @@ export default function Widget() {
           </div>
         </header>
 
-        <div className="widgetMeters" aria-label="使用额度">
-          <WidgetMeter label="5h" limit={fiveHour} title="5 小时额度" />
-          <WidgetMeter label="W" limit={weekly} title="每周额度" />
+        <div
+          className={`widgetMeters ${meterWindows.length <= 1 ? "single" : ""}`}
+          aria-label="使用额度"
+        >
+          {meterWindows.map((limit, index) => (
+            <WidgetMeter
+              key={limit ? `${limit.id}-${index}` : `empty-${index}`}
+              label={windowMark(limit?.kind)}
+              limit={limit}
+              title={limit?.title ?? (loading ? "额度窗口" : "暂无额度窗口")}
+            />
+          ))}
         </div>
 
         <article className="widgetNudge">
@@ -224,10 +233,17 @@ export default function Widget() {
 }
 
 function WidgetMeter({ label, limit, title }) {
-  const remaining = Number.isFinite(limit?.remainingPercent)
+  const hasRemaining = Number.isFinite(limit?.remainingPercent);
+  const remaining = hasRemaining
     ? Math.max(0, Math.min(100, limit.remainingPercent))
     : 0;
-  const tone = remaining <= 15 ? "low" : remaining <= 30 ? "warn" : "ok";
+  const tone = !hasRemaining
+    ? "unknown"
+    : remaining <= 15
+      ? "low"
+      : remaining <= 30
+        ? "warn"
+        : "ok";
 
   return (
     <article className={`widgetMeter ${tone}`}>
@@ -247,6 +263,13 @@ function WidgetMeter({ label, limit, title }) {
       </div>
     </article>
   );
+}
+
+function windowMark(kind) {
+  if (kind === "weekly") {
+    return "W";
+  }
+  return "-";
 }
 
 function percent(value) {

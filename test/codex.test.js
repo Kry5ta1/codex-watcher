@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   decodeResetCreditsResponse,
+  decodeUsageResponse,
   makeNudge,
   makeUrgency
 } from "../lib/codex.js";
@@ -28,17 +29,42 @@ describe("reset urgency", () => {
   });
 });
 
-describe("usage nudge", () => {
-  it("waits for the 5h window when weekly room is healthy", () => {
-    const nudge = makeNudge(
-      [window("fiveHour", 8, 45 * 60), window("weekly", 45, 3 * 86400)],
-      1
-    );
+describe("usage window decoding", () => {
+  it("recognizes a weekly window returned in primary_window", () => {
+    const usage = decodeUsageResponse({
+      plan_type: "plus",
+      rate_limit: {
+        primary_window: {
+          limit_window_seconds: 7 * 86400,
+          reset_after_seconds: 2 * 86400,
+          used_percent: 35
+        }
+      }
+    });
 
-    assert.equal(nudge.tier, "waitFiveHour");
-    assert.equal(nudge.title, "先等 5 小时窗口恢复");
+    assert.equal(usage.planLabel, "Plus");
+    assert.deepEqual(
+      usage.windows.map(({ id, kind, title }) => ({ id, kind, title })),
+      [{ id: "weekly", kind: "weekly", title: "每周额度" }]
+    );
   });
 
+  it("ignores the retired short window even when the upstream still returns it", () => {
+    const usage = decodeUsageResponse({
+      rateLimit: {
+        primaryWindow: { limitWindowSeconds: 7 * 86400, usedPercent: 20 },
+        secondaryWindow: { limitWindowSeconds: 5 * 3600, usedPercent: 40 }
+      }
+    });
+
+    assert.deepEqual(
+      usage.windows.map((item) => item.kind),
+      ["weekly"]
+    );
+  });
+});
+
+describe("usage nudge", () => {
   it("tells the user to spend only when weekly room is thin and resets exist", () => {
     const nudge = makeNudge([window("weekly", 10, 5 * 86400)], 2);
 
@@ -46,11 +72,8 @@ describe("usage nudge", () => {
     assert.equal(nudge.title, "可以推进任务了");
   });
 
-  it("warns when both quota windows are low and there are no resets", () => {
-    const nudge = makeNudge(
-      [window("fiveHour", 8, 3 * 3600), window("weekly", 12, 4 * 86400)],
-      0
-    );
+  it("warns when weekly quota is low and there are no resets", () => {
+    const nudge = makeNudge([window("weekly", 12, 4 * 86400)], 0);
 
     assert.equal(nudge.tier, "noResets");
     assert.equal(nudge.title, "没有备用重置，先控节奏");
@@ -58,23 +81,10 @@ describe("usage nudge", () => {
   });
 
   it("holds resets when weekly refresh is close", () => {
-    const nudge = makeNudge(
-      [window("fiveHour", 45, 2 * 3600), window("weekly", 12, 8 * 3600)],
-      1
-    );
+    const nudge = makeNudge([window("weekly", 12, 8 * 3600)], 1);
 
     assert.equal(nudge.tier, "hold");
     assert.equal(nudge.title, "快到每周刷新，先撑一撑");
-  });
-
-  it("uses deadline guidance when the short window is low but weekly quota is healthy", () => {
-    const nudge = makeNudge(
-      [window("fiveHour", 18, 2 * 3600), window("weekly", 70, 5 * 86400)],
-      1
-    );
-
-    assert.equal(nudge.tier, "deadline");
-    assert.equal(nudge.title, "按截止时间决定");
   });
 });
 
