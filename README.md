@@ -2,7 +2,7 @@
 
 **Language:** English | [中文](README.zh-CN.md)
 
-Codex Watcher is a Windows desktop widget for keeping Codex 5-hour quota, weekly quota, and available reset credits visible at a glance, helping you stay aware of quota status in real time.
+Codex Watcher is a Windows desktop widget for keeping the Codex weekly quota and available reset credits visible at a glance.
 
 The web dashboard is included as a secondary entry for debugging, previewing, and fallback viewing.
 
@@ -12,7 +12,7 @@ The web dashboard is included as a secondary entry for debugging, previewing, an
 
 The desktop card uses Electron to host a Next.js page in a small Windows desktop window.
 
-It shows Codex 5-hour quota, weekly quota, available reset count, and the reset tickets that expire soonest.
+It shows the Codex weekly quota, available reset count, and the reset tickets that expire soonest. The retired short-window monitor and missing windows are not displayed as 0%.
 
 It gives short usage guidance based on quota levels and reset expiry times, helping you decide whether to wait or spend a saved reset.
 
@@ -23,7 +23,7 @@ Window position, size, always-on-top, lock, startup, and transparency settings a
 ## Requirements
 
 - Windows
-- Node.js 20.9.0 or newer
+- Node.js 22.12.0 or newer
 - npm
 - Codex Desktop signed in on the same machine
 

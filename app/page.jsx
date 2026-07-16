@@ -49,6 +49,7 @@ export default function Home() {
     () => [requestError, ...(status?.errors ?? [])].filter(Boolean),
     [requestError, status]
   );
+  const usageWindows = status?.windows ?? [];
 
   return (
     <main className="dashboard">
@@ -127,14 +128,17 @@ export default function Home() {
           <LoadingState />
         ) : (
           <>
-            <section className="meterGrid" aria-label="使用额度">
-              {(status?.windows ?? []).map((window) => (
-                <UsageCard window={window} key={window.id} />
+            <section
+              className={`meterGrid ${usageWindows.length <= 1 ? "single" : ""}`}
+              aria-label="使用额度"
+            >
+              {usageWindows.map((window, index) => (
+                <UsageCard window={window} key={`${window.id}-${index}`} />
               ))}
-              {(status?.windows?.length ?? 0) === 0 ? (
+              {usageWindows.length === 0 ? (
                 <EmptyPanel
                   title="还没有额度窗口"
-                  text="等待 Codex 返回 5 小时和每周额度。"
+                  text="等待 Codex 返回当前计划的额度窗口。"
                 />
               ) : null}
             </section>
@@ -178,9 +182,8 @@ export default function Home() {
 function LoadingState() {
   return (
     <>
-      <section className="meterGrid" aria-label="加载中的使用额度">
-        <SkeletonUsageCard title="5 小时额度" mark="5h" />
-        <SkeletonUsageCard title="每周额度" mark="周" />
+      <section className="meterGrid single" aria-label="加载中的使用额度">
+        <SkeletonUsageCard title="额度窗口" mark="-" />
       </section>
       <section className="resetPanel">
         <header>
@@ -303,15 +306,22 @@ function NudgeCard({ nudge, loading }) {
 }
 
 function UsageCard({ window }) {
-  const remaining = Number.isFinite(window.remainingPercent)
+  const hasRemaining = Number.isFinite(window.remainingPercent);
+  const remaining = hasRemaining
     ? Math.max(0, Math.min(100, window.remainingPercent))
     : 0;
-  const tone = remaining <= 15 ? "low" : remaining <= 30 ? "warn" : "ok";
+  const tone = !hasRemaining
+    ? "unknown"
+    : remaining <= 15
+      ? "low"
+      : remaining <= 30
+        ? "warn"
+        : "ok";
 
   return (
     <article className={`usageCard ${tone}`}>
       <header>
-        <span className="metricMark">{window.kind === "weekly" ? "W" : "5h"}</span>
+        <span className="metricMark">{windowMark(window.kind)}</span>
         <div>
           <strong>{window.title}</strong>
           <span>剩余额度</span>
@@ -342,6 +352,13 @@ function UsageCard({ window }) {
   );
 }
 
+function windowMark(kind) {
+  if (kind === "weekly") {
+    return "W";
+  }
+  return "-";
+}
+
 function formatDate(value, includeDate = false) {
   if (!value) {
     return "-";
@@ -361,7 +378,7 @@ function percent(value) {
 }
 
 function iconForNudge(tier) {
-  if (tier === "hold" || tier === "waitFiveHour") {
+  if (tier === "hold") {
     return "-";
   }
   if (tier === "steady") {

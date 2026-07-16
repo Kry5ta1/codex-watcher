@@ -176,7 +176,6 @@ p {
 }
 
 .nudgeCard.expiringReset,
-.nudgeCard.deadline,
 .nudgeCard.spend,
 .nudgeCard.useIfBlocked {
   background: rgb(185 120 5 / 16%);
@@ -184,14 +183,12 @@ p {
 }
 
 .nudgeCard.expiringReset .nudgeIcon,
-.nudgeCard.deadline .nudgeIcon,
 .nudgeCard.spend .nudgeIcon,
 .nudgeCard.useIfBlocked .nudgeIcon {
   background: var(--amber);
 }
 
-.nudgeCard.hold,
-.nudgeCard.waitFiveHour {
+.nudgeCard.hold {
   background: rgb(49 94 216 / 14%);
   border-color: rgb(107 142 237 / 28%);
 }
@@ -327,6 +324,10 @@ p {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.meterGrid.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .usageCard,
 .resetPanel,
 .emptyPanel,
@@ -360,6 +361,10 @@ p {
 
 .usageCard.low::before {
   background: var(--red);
+}
+
+.usageCard.unknown::before {
+  background: #a8b0ab;
 }
 
 .usageCard header {
@@ -832,6 +837,10 @@ p {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.widgetMeters.single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .widgetMeter {
