@@ -1,0 +1,80 @@
+name: Publish approved v0.3.0 release
+
+on:
+  push:
+    branches: ['release/publish-v0.3.0']
+    paths: ['.github/workflows/publish-v0.3.0.yml']
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: publish-codex-watcher-v0.3.0
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: Kry5ta1/codex-watcher
+      TARGET_SHA: 6c02412521ced53a3fd5129d910abe0ccb274cd8
+      BUILD_SHA: 0c7ba0876ea9ed9ef9a0bca4c33b1495b3e24db5
+    steps:
+      - name: Verify approved source and absent release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api repos/$GH_REPO/actions/runs/41569237156 > run.json
+          jq -e --arg sha "$BUILD_SHA" '.head_sha == $sha and .status == "completed" and .conclusion == "success"' run.json
+          source_tree=$(gh api repos/$GH_REPO/git/commits/$BUILD_SHA --jq '.tree.sha')
+          target_tree=$(gh api repos/$GH_REPO/git/commits/$TARGET_SHA --jq '.tree.sha')
+          test "$source_tree" = "$target_tree"
+          gh api --paginate repos/$GH_REPO/releases --jq '.[].tag_name' > releases.txt
+          if grep -Fxq v0.3.0 releases.txt; then
+            echo 'Release v0.3.0 already exists; refusing to overwrite.' >&2
+            exit 1
+          fi
+          gh api repos/$GH_REPO/git/matching-refs/tags/v0.3.0 > tags.json
+          jq -e 'all(.[]; .ref != "refs/tags/v0.3.0")' tags.json
+
+      - name: Download and verify original installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download 41569237156 --repo "$GH_REPO" --name Codex-Watcher-0.3.0-windows-x64 --dir artifacts
+          cd artifacts
+          test "$(find . -type f | wc -l)" -eq 2
+          test -s Codex-Watcher-Setup-0.3.0.exe
+          test -s Codex-Watcher-Setup-0.3.0.exe.sha256
+          sha256sum --check Codex-Watcher-Setup-0.3.0.exe.sha256
+          sha256sum Codex-Watcher-Setup-0.3.0.exe | tee ../installer-sha256.txt
+
+      - name: Create draft with assets, verify, then publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > notes.md <<'NOTES'
+          ## Codex Watcher 0.3.0
+
+          - 自动检测订阅：Plus 显示 5 小时额度，Pro 系列及已识别的高阶订阅显示周额度。
+          - 卡片和 Web 仪表盘同步显示对应标签和使用建议。
+          - 未知订阅或缺失窗口给出提示，不显示错误窗口或伪造 0%。
+
+          Windows x64 安装包。下载 exe 安装；附带 SHA256 校验文件。
+          安装包复用已通过测试和 Windows 构建的 Actions 运行 41569237156，未重新打包。
+          NOTES
+          gh release create v0.3.0 artifacts/Codex-Watcher-Setup-0.3.0.exe artifacts/Codex-Watcher-Setup-0.3.0.exe.sha256 \
+            --repo "$GH_REPO" --target "$TARGET_SHA" --title 'Codex Watcher 0.3.0' --notes-file notes.md --draft
+          gh release view v0.3.0 --repo "$GH_REPO" --json isDraft,assets > release.json
+          jq -e '.isDraft == true and ([.assets[].name] | sort) == ["Codex-Watcher-Setup-0.3.0.exe", "Codex-Watcher-Setup-0.3.0.exe.sha256"]' release.json
+          mkdir downloaded
+          gh release download v0.3.0 --repo "$GH_REPO" --dir downloaded
+          cmp artifacts/Codex-Watcher-Setup-0.3.0.exe downloaded/Codex-Watcher-Setup-0.3.0.exe
+          cmp artifacts/Codex-Watcher-Setup-0.3.0.exe.sha256 downloaded/Codex-Watcher-Setup-0.3.0.exe.sha256
+          gh release edit v0.3.0 --repo "$GH_REPO" --draft=false --latest
+          gh release view v0.3.0 --repo "$GH_REPO" --json isDraft,url --jq 'select(.isDraft == false) | .url' >> "$GITHUB_STEP_SUMMARY"
+          gh api repos/$GH_REPO/git/ref/tags/v0.3.0 --jq '.object.sha' | grep -Fx "$TARGET_SHA"
+          cat installer-sha256.txt >> "$GITHUB_STEP_SUMMARY"
