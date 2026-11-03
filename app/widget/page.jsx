@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clampTransparency, expiryInfo, relativeChecked } from "../../lib/widget.js";
 
+import AnnouncementClock from "../components/AnnouncementClock.jsx";
+
 const TRANSPARENCY_KEY = "codex-widget-transparency";
 
 export default function Widget() {
@@ -136,6 +138,8 @@ export default function Widget() {
             </button>
           </div>
         </header>
+
+        <AnnouncementClock compact />
 
         <div
           className={`widgetMeters ${meterWindows.length <= 1 ? "single" : ""}`}

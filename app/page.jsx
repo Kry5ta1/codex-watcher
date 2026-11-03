@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expiryInfo, relativeChecked } from "../lib/widget.js";
 
+import AnnouncementClock from "./components/AnnouncementClock.jsx";
+
 export default function Home() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,8 @@ export default function Home() {
             </small>
           </div>
         </div>
+
+        <AnnouncementClock />
 
         <img
           className="summaryArt"

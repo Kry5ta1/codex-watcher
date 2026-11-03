@@ -1197,3 +1197,151 @@ p {
     justify-content: flex-start;
   }
 }
+
+/* A quiet, high-contrast reference clock, independent of quota refreshes. */
+.announcementClock {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(128 222 185 / 12%), transparent 65%),
+    linear-gradient(135deg, rgb(9 24 21 / 80%), rgb(18 37 31 / 65%));
+  border: 1px solid rgb(156 224 193 / 24%);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%);
+  color: #effbf5;
+  min-width: 0;
+  padding: 16px;
+}
+
+.announcementClockHeader,
+.announcementClockLabel,
+.announcementClockZone,
+.announcementClockFace,
+.announcementClock time {
+  align-items: center;
+  display: flex;
+}
+
+.announcementClockHeader,
+.announcementClockFace {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.announcementClockLabel {
+  color: #a4d4bd;
+  font-size: 0.64rem;
+  font-weight: 750;
+  gap: 6px;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+
+.announcementClockLabel svg {
+  height: 15px;
+  width: 15px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.announcementClockZone {
+  color: #d1f4e3;
+  font-size: 0.65rem;
+  font-weight: 750;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.announcementClockZone > span {
+  color: #adc5b9;
+  font-weight: 500;
+}
+
+.announcementClockFace {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  row-gap: 8px;
+}
+
+.announcementClock time {
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.announcementClockDigits {
+  font-size: clamp(2rem, 4vw, 2.65rem);
+  font-weight: 550;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.announcementClockSeconds {
+  color: #a4d4bd;
+  font-size: 1.2rem;
+  font-weight: 450;
+  margin-left: 3px;
+}
+
+.announcementClockPeriod {
+  color: #d1f4e3;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 7px;
+}
+
+.announcementClockDate {
+  display: grid;
+  gap: 3px;
+  text-align: right;
+}
+
+.announcementClockDate strong {
+  color: #e2f1e9;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.announcementClockDate > span,
+.announcementClockHint {
+  color: #adc5b9;
+  font-size: 0.63rem;
+  line-height: 1.4;
+}
+
+.announcementClockHint {
+  border-top: 1px solid rgb(156 224 193 / 15%);
+  margin-top: 13px;
+  padding-top: 10px;
+}
+
+.announcementClock.compact {
+  padding: 12px;
+}
+
+.announcementClock.compact .announcementClockDigits {
+  font-size: 2.15rem;
+}
+
+/* Small saved windows must still expose tickets and errors below the clock. */
+.widgetShell {
+  height: 100vh;
+}
+
+.widgetCard {
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: rgb(164 212 189 / 55%) transparent;
+  scrollbar-width: thin;
+}
+
+.widgetCard {
+  -webkit-app-region: no-drag;
+}
+
+.widgetHeader {
+  -webkit-app-region: drag;
+}
