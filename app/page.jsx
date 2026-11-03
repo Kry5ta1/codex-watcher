@@ -353,6 +353,9 @@ function UsageCard({ window }) {
 }
 
 function windowMark(kind) {
+  if (kind === "short") {
+    return "5H";
+  }
   if (kind === "weekly") {
     return "W";
   }
