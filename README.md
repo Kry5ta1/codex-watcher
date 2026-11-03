@@ -57,6 +57,14 @@ npm run desktop:pack
 
 The installer is written to `dist`.
 
+## GitHub Actions packaging
+
+The **Build Windows Installer** workflow builds Windows x64 installers on pull requests that change the app/build inputs, or through **Actions → Build Windows Installer → Run workflow** on the chosen branch.
+
+It runs tests and the production build, then packages the installer. Download `Codex-Watcher-0.3.0-windows-x64` from the successful run's **Artifacts** section; it contains `Codex-Watcher-Setup-0.3.0.exe` and its SHA256 checksum. Artifact names use the version in `package.json` and are retained for 14 days.
+
+The workflow only creates build artifacts. It does not publish GitHub Releases or overwrite old release installers. A failed packaging command fails the run even if an installer file exists.
+
 ## Development
 
 When developing the desktop card, start Next.js first and then start Electron.

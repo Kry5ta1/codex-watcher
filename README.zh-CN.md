@@ -58,6 +58,14 @@ npm run desktop:pack
 
 安装包会输出到 `dist`。
 
+## GitHub Actions 打包
+
+**Build Windows Installer** 工作流会在修改应用或构建输入的 PR 中自动构建 Windows x64 安装包，也可以在 **Actions → Build Windows Installer → Run workflow** 中选择分支手动运行。
+
+工作流先运行测试和生产构建，再生成安装包。从成功运行页面的 **Artifacts** 下载 `Codex-Watcher-0.3.0-windows-x64`，其中包含 `Codex-Watcher-Setup-0.3.0.exe` 和 SHA256 校验文件。文件名取自 `package.json` 的版本号，产物保留 14 天。
+
+该流程只生成构建产物，不发布 GitHub Release，也不会覆盖旧版安装包。打包命令失败时，即使目录中存在安装包也会将本次运行判定为失败。
+
 ## 开发
 
 开发桌面卡片时需要先启动 Next.js，再启动 Electron。
