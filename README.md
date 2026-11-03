@@ -20,6 +20,12 @@ It supports a tray menu, show or hide actions, refresh, always-on-top, position 
 
 Window position, size, always-on-top, lock, startup, and transparency settings are saved in the local Electron user data directory.
 
+## Pacific reference clock
+
+Both the desktop card and web dashboard show a live US Pacific clock in 12-hour format (for example, `10:30:45 AM PST`), with the Pacific date and UTC offset. It uses `America/Los_Angeles`, switching automatically between PST (UTC−8) and PDT (UTC−7). Use it to compare announcements that explicitly say PT/PST/PDT; announcements in other time zones still need conversion.
+
+The clock uses your computer's system time and updates independently every second. It is a time reference, not an automatic reset countdown or a connection to X. Keep your operating system clock synchronized. Compact windows can scroll to keep the tickets and error messages accessible; drag the top title bar to move the card.
+
 ## Requirements
 
 - Windows
