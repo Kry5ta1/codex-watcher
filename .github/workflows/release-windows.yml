@@ -1,19 +1,28 @@
-name: Release Windows Installer
+name: Build Windows Installer
 
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Release tag to upload to
-        required: true
-        default: v0.2.0
+  pull_request:
+    paths:
+      - '.github/workflows/release-windows.yml'
+      - 'app/**'
+      - 'lib/**'
+      - 'desktop/**'
+      - 'public/**'
+      - 'test/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'next.config.js'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build-and-upload:
+  build-installer:
     runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
 
     steps:
       - name: Checkout
@@ -31,39 +40,48 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Build app
+        run: npm run build
+
       - name: Build installer
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Continue'
-          npm run build
+          $ErrorActionPreference = 'Stop'
+          npx electron-builder --win nsis --x64 --publish never
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
 
-          npx electron-builder --win nsis --publish never
-          $packExit = $LASTEXITCODE
-
-          $installer = Get-ChildItem -LiteralPath dist -Filter '*Setup*.exe' -File |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-
-          if (-not $installer) {
-            exit $packExit
-          }
-
-          if ($packExit -ne 0) {
-            Write-Warning "desktop:pack exited with code $packExit after generating the installer; continuing with release upload."
-          }
-
-          $package = Get-Content -LiteralPath package.json | ConvertFrom-Json
-          $assetName = "Codex-Watcher-Setup-$($package.version).exe"
-          $assetPath = Join-Path $installer.DirectoryName $assetName
-          Copy-Item -LiteralPath $installer.FullName -Destination $assetPath -Force
-          "ASSET_PATH=$assetPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          exit 0
-
-      - name: Upload release asset
+      - name: Prepare installer artifact
+        id: installer
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ inputs.tag }}" "$env:ASSET_PATH" --repo "${{ github.repository }}" --clobber
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = Get-Content -LiteralPath package.json | ConvertFrom-Json
+          $installers = @(Get-ChildItem -LiteralPath dist -Filter '*Setup*.exe' -File)
+          if ($installers.Count -ne 1) {
+            throw "Expected exactly one installer, found $($installers.Count)."
+          }
+          if ($installers[0].Length -eq 0) {
+            throw 'The installer is empty.'
+          }
+
+          New-Item -ItemType Directory -Path artifacts -Force | Out-Null
+          $assetName = "Codex-Watcher-Setup-$($package.version).exe"
+          $assetPath = Join-Path artifacts $assetName
+          Copy-Item -LiteralPath $installers[0].FullName -Destination $assetPath
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $assetPath).Hash.ToLowerInvariant()
+          "$hash  $assetName" | Set-Content -LiteralPath "$assetPath.sha256" -Encoding utf8
+          "version=$($package.version)" >> $env:GITHUB_OUTPUT
+          "Installer: $assetName" >> $env:GITHUB_STEP_SUMMARY
+          "SHA256: $hash" >> $env:GITHUB_STEP_SUMMARY
+          'Download the installer from the Artifacts section of this run. No GitHub Release was published.' >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Codex-Watcher-${{ steps.installer.outputs.version }}-windows-x64
+          path: artifacts/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
