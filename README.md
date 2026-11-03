@@ -2,7 +2,7 @@
 
 **Language:** English | [中文](README.zh-CN.md)
 
-Codex Watcher is a Windows desktop widget for keeping the Codex weekly quota and available reset credits visible at a glance.
+Codex Watcher is a Windows desktop widget for keeping the Codex quota for your subscription and available reset credits visible at a glance.
 
 The web dashboard is included as a secondary entry for debugging, previewing, and fallback viewing.
 
@@ -12,7 +12,7 @@ The web dashboard is included as a secondary entry for debugging, previewing, an
 
 The desktop card uses Electron to host a Next.js page in a small Windows desktop window.
 
-It shows the Codex weekly quota, available reset count, and the reset tickets that expire soonest. The retired short-window monitor and missing windows are not displayed as 0%.
+It detects the subscription from the quota response: Plus shows the 5-hour quota; Pro (including ProLite/ProMax) and supported Business/Enterprise/Edu plans show the weekly quota. It also shows the available reset count and the reset tickets that expire soonest. Unknown plans and missing quota windows produce a warning instead of displaying a different window or a fabricated 0%.
 
 It gives short usage guidance based on quota levels and reset expiry times, helping you decide whether to wait or spend a saved reset.
 
