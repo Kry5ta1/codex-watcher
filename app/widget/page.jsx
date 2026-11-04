@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { clampTransparency, expiryInfo, relativeChecked } from "../../lib/widget.js";
+import { expiryInfo, relativeChecked } from "../../lib/widget.js";
 
 import CompanionTheme from "../components/CompanionTheme.jsx";
 import AnnouncementClock from "../components/AnnouncementClock.jsx";
 
-const TRANSPARENCY_KEY = "codex-widget-transparency";
+import { useAppearance } from "../components/ThemeProvider.jsx";
+import useWidgetLayout from "../hooks/useWidgetLayout.js";
+import { themeTransparency } from "../../lib/themes.js";
 
 export default function Widget() {
   const [status, setStatus] = useState(null);
@@ -14,16 +16,11 @@ export default function Widget() {
   const [requestError, setRequestError] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState(null);
-  const [transparency, setTransparency] = useState(18);
+  const { appearance } = useAppearance();
+  const transparency = themeTransparency(appearance.theme);
   const [now, setNow] = useState(() => new Date());
   const toastTimer = useRef(null);
-
-  function applyTransparency(value) {
-    const nextTransparency = clampTransparency(value);
-    setTransparency(nextTransparency);
-    setLocalTransparency(nextTransparency);
-    return nextTransparency;
-  }
+  const { shellRef, shellStyle } = useWidgetLayout();
 
   async function refresh({ notify = false } = {}) {
     setLoading(true);
@@ -50,46 +47,16 @@ export default function Widget() {
 
   useEffect(() => {
     document.body.classList.add("widgetBody");
-    let ignoreTransparency = false;
-    const stopWatchingTransparency = window.codexWidget?.onTransparencyChanged?.(
-      (value) => applyTransparency(value)
-    );
-
-    async function loadTransparency() {
-      const electronTransparency = await window.codexWidget?.getTransparency?.();
-      if (ignoreTransparency) {
-        return;
-      }
-      if (electronTransparency !== null && electronTransparency !== undefined) {
-        applyTransparency(electronTransparency);
-        return;
-      }
-
-      const localTransparency = readLocalTransparency();
-      if (localTransparency !== null) {
-        applyTransparency(localTransparency);
-        await window.codexWidget?.setTransparency?.(localTransparency);
-      }
-    }
-
-    loadTransparency().catch(() => {});
     refresh();
     const refreshTimer = setInterval(refresh, 5 * 60 * 1000);
     const clockTimer = setInterval(() => setNow(new Date()), 60 * 1000);
     return () => {
-      ignoreTransparency = true;
-      stopWatchingTransparency?.();
       document.body.classList.remove("widgetBody");
       clearInterval(refreshTimer);
       clearInterval(clockTimer);
       clearTimeout(toastTimer.current);
     };
   }, []);
-
-  function changeTransparency(event) {
-    const nextTransparency = applyTransparency(event.target.value);
-    window.codexWidget?.setTransparency?.(nextTransparency)?.catch?.(() => {});
-  }
 
   const errors = useMemo(
     () => [requestError, ...(status?.errors ?? [])].filter(Boolean),
@@ -102,7 +69,8 @@ export default function Widget() {
   const opacity = 1 - transparency / 100;
 
   return (
-    <main className="widgetShell">
+    <div className="widgetViewport">
+    <main className="widgetShell" ref={shellRef} style={shellStyle}>
       <section
         className={`widgetCard ${status?.nudge?.tier ?? "loading"}`}
         style={{ "--widget-alpha": opacity }}
@@ -219,23 +187,17 @@ export default function Widget() {
                 &#215;
               </button>
             </header>
-            <label className="widgetOpacityControl">
-              <span>透明度</span>
-              <strong>{Math.round(transparency)}%</strong>
-              <input
-                aria-label="调整透明度"
-                max="100"
-                min="0"
-                onChange={changeTransparency}
-                step="1"
-                type="range"
-                value={transparency}
-              />
-            </label>
+            <div className="widgetOpacityControl">
+              <span>当前主题背景透明度</span>
+              <strong>{transparency}%</strong>
+            </div>
+            <p className="widgetSettingsHint">经典 15% · 深海 10% · 白龙 0%<br />透明度随主题切换，文字保持清晰。</p>
+
           </section>
         ) : null}
       </section>
     </main>
+    </div>
   );
 }
 
@@ -284,23 +246,4 @@ function windowMark(kind) {
 
 function percent(value) {
   return Number.isFinite(value) ? `${Math.round(value)}%` : "-";
-}
-
-function setLocalTransparency(value) {
-  try {
-    window.localStorage.setItem(TRANSPARENCY_KEY, String(value));
-  } catch {}
-}
-
-function readLocalTransparency() {
-  try {
-    const value = window.localStorage.getItem(TRANSPARENCY_KEY);
-    if (value === null) {
-      return null;
-    }
-    const number = Number(value);
-    return clampTransparency(number > 0 && number <= 1 ? number * 100 : number);
-  } catch {
-    return null;
-  }
 }

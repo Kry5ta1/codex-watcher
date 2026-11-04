@@ -6,4 +6,8 @@ function normalizeAppearance(value) {
     focusMode: value?.focusMode === true
   };
 }
-module.exports = { THEMES, normalizeAppearance };
+const THEME_TRANSPARENCY = Object.freeze({ classic: 15, whale: 10, dragon: 0 });
+function themeTransparency(theme) {
+  return THEME_TRANSPARENCY[normalizeAppearance({ theme }).theme];
+}
+module.exports = { THEMES, normalizeAppearance, THEME_TRANSPARENCY, themeTransparency };

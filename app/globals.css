@@ -1325,23 +1325,56 @@ p {
   font-size: 2.15rem;
 }
 
-/* Small saved windows must still expose tickets and errors below the clock. */
-.widgetShell {
+/* The desktop card is content-sized, not a scrolling web viewport. */
+.widgetViewport {
+  width: 100vw;
   height: 100vh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
-
+.widgetShell {
+  height: auto;
+  min-height: 0;
+  flex: 0 0 auto;
+  transform-origin: top center;
+}
 .widgetCard {
+  --widget-alpha: 0.85;
   align-content: start;
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-color: rgb(164 212 189 / 55%) transparent;
-  scrollbar-width: thin;
-}
-
-.widgetCard {
+  overflow: visible;
   -webkit-app-region: no-drag;
 }
-
-.widgetHeader {
-  -webkit-app-region: drag;
+.widgetHeader { -webkit-app-region: drag; }
+.widgetSettingsPanel {
+  position: static;
+  width: auto;
+  max-width: none;
+  box-shadow: none;
+}
+.widgetSettingsHint {
+  font-size: .75rem;
+  line-height: 1.5;
+  opacity: .8;
+}
+.widgetNudge p, .widgetError span, .widgetTicket strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.widgetMeter header strong, .widgetMeter small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* Keep long plan labels and refresh feedback inside the measured header. */
+.widgetHeader { flex-wrap: wrap; }
+.widgetBrand { flex: 1 1 220px; }
+.widgetHeaderActions { margin-left: auto; }
+.widgetBrand strong {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }

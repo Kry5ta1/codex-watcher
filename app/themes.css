@@ -123,3 +123,25 @@
   .themeChoices button[aria-pressed="true"], .themeFocus[aria-pressed="true"] { border: 2px solid Highlight; }
   .themeSwatch, .companionHalo, .companionSpark { display: none; }
 }
+
+/* Apply transparency to one background layer, never to text or controls. */
+.watcherTheme[data-theme] .widgetCard {
+  background: transparent;
+  isolation: isolate;
+}
+.widgetCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: var(--widget-alpha, .85);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 18%), rgb(255 255 255 / 4%) 42%, rgb(255 255 255 / 8%)),
+    radial-gradient(circle at 18% 0%, rgb(255 255 255 / 15%), transparent 34%),
+    #151917;
+}
+.watcherTheme:not([data-theme="classic"]) .widgetCard::before {
+  background: radial-gradient(ellipse at 100% 0%, var(--theme-selected), transparent 55%), rgb(var(--theme-shell-rgb));
+}

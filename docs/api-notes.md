@@ -22,3 +22,13 @@
 ## Desktop appearance IPC
 
 Preload exposes only `getAppearance()` and `setAppearance(value)` for these settings. The main process validates every value with `normalizeAppearance` and writes only `{ theme, focusMode }` to `settings.appearance` in the existing local settings file. Theme values are `classic`, `whale`, or `dragon`; unknown values become `classic`, and only literal `true` enables focus mode. A missing saved value returns `null` so the renderer can retain its local fallback. No filesystem paths, tokens, arbitrary settings writes, or network operations are exposed by these methods.
+
+## Desktop layout IPC
+
+- `getLayout()` returns `{ scale, width, height }`. Width and height are natural untransformed CSS pixels; scale is applied exactly once by the renderer.
+- `reportContentSize({ width, height })` accepts finite positive numeric dimensions up to 20000 pixels, rounds upward, and updates the native minimum size and bounds. Only the main window's webContents may submit measurements. Extra properties are ignored.
+- `onLayoutChanged(callback)` subscribes to layout changes and returns an unsubscribe function. The renderer listens before its initial read and ignores stale initialization results.
+- Measurements include shell padding and normal-flow settings/error/ticket content, not viewport height or transformed geometry. Electron workArea and native bounds are DIP values; `devicePixelRatio` is not multiplied in. Browser page zoom is fixed at 1 for the desktop widget so the coordinate contract stays consistent.
+- Global get/set-transparency IPC is removed. Background transparency is derived from the validated appearance theme, never from old global settings.
+
+Reference: [Electron BrowserWindow sizing](https://www.electronjs.org/docs/latest/api/browser-window) and [screen work areas](https://www.electronjs.org/docs/latest/api/screen/).

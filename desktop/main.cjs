@@ -1,5 +1,6 @@
 const fs = require("node:fs");
-const { normalizeAppearance } = require("./appearance.cjs");
+const { normalizeAppearance, themeTransparency } = require("./appearance.cjs");
+const { normalizeContentSize, selectWorkArea, fitWindowLayout } = require("./window-layout.cjs");
 const http = require("node:http");
 const net = require("node:net");
 const path = require("node:path");
@@ -16,14 +17,16 @@ const {
 
 const DEV_URL = "http://127.0.0.1:3000/widget";
 const START_PORT = 42173;
-const TRANSPARENCY_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-const WINDOW_DEFAULTS = { width: 420, height: 700 };
 
 let mainWindow;
 let tray;
 let settings = {};
 let saveTimer;
 let isQuitting = false;
+let contentSize = null;
+let currentLayout = null;
+let layoutTimer;
+let applyingLayout = false;
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -77,13 +80,15 @@ async function resolveAppUrl() {
 }
 
 function createWindow(appUrl) {
+  const initial = calculateWindowLayout(settings.bounds);
+  currentLayout = initial.layout;
   mainWindow = new BrowserWindow({
-    ...safeBounds(settings.bounds),
+    ...initial.bounds,
     backgroundColor: "#00000000",
     frame: false,
     hasShadow: true,
-    minHeight: 620,
-    minWidth: 380,
+    minHeight: initial.minimum.height,
+    minWidth: initial.minimum.width,
     resizable: settings.locked !== true,
     show: false,
     skipTaskbar: true,
@@ -97,6 +102,10 @@ function createWindow(appUrl) {
 
   mainWindow.setMenuBarVisibility(false);
   mainWindow.setSkipTaskbar(true);
+  // Content measurements and native DIP sizes share a 1:1 CSS coordinate space.
+  mainWindow.webContents.setZoomFactor(1);
+  mainWindow.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {});
+  mainWindow.webContents.on("zoom-changed", () => mainWindow.webContents.setZoomFactor(1));
   applyWindowFlags();
 
   mainWindow.once("ready-to-show", () => showWindow());
@@ -106,8 +115,25 @@ function createWindow(appUrl) {
       mainWindow.hide();
     }
   });
+  const geometryChanged = () => {
+    queueBoundsSave();
+    if (!applyingLayout) scheduleLayout();
+  };
+  // Clamp after a Windows move gesture, not on every intermediate move event:
+  // otherwise snapping back at the monitor edge can prevent crossing displays.
   mainWindow.on("move", queueBoundsSave);
-  mainWindow.on("resize", queueBoundsSave);
+  mainWindow.on("moved", geometryChanged);
+  mainWindow.on("resize", geometryChanged);
+  screen.on("display-metrics-changed", scheduleLayout);
+  screen.on("display-added", scheduleLayout);
+  screen.on("display-removed", scheduleLayout);
+  mainWindow.on("closed", () => {
+    clearTimeout(layoutTimer);
+    clearTimeout(saveTimer);
+    screen.removeListener("display-metrics-changed", scheduleLayout);
+    screen.removeListener("display-added", scheduleLayout);
+    screen.removeListener("display-removed", scheduleLayout);
+  });
   mainWindow.webContents.on("did-fail-load", (_event, _code, description) => {
     dialog.showMessageBox(mainWindow, {
       message: "无法打开桌面卡片",
@@ -149,15 +175,7 @@ function refreshTrayMenu() {
       {
         label: "设置",
         submenu: [
-          {
-            label: `透明度：${currentTransparency()}%`,
-            submenu: transparencyOptions().map((value) => ({
-              checked: currentTransparency() === value,
-              click: () => updateTransparency(value),
-              label: `${value}%`,
-              type: "radio"
-            }))
-          },
+          { label: `主题背景透明度：${currentTransparency()}%`, enabled: false },
           { type: "separator" },
           {
             checked: settings.alwaysOnTop === true,
@@ -192,19 +210,25 @@ function refreshTrayMenu() {
 }
 
 function registerIpc() {
+  ipcMain.handle("widget:get-layout", () => currentLayout);
+  ipcMain.handle("widget:report-content-size", (event, value) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) return currentLayout;
+    const next = normalizeContentSize(value);
+    if (next && (!contentSize || next.width !== contentSize.width || next.height !== contentSize.height)) {
+      contentSize = next;
+      applyContentLayout();
+    }
+    return currentLayout;
+  });
   ipcMain.handle("widget:get-appearance", () => settings.appearance ? normalizeAppearance(settings.appearance) : null);
   ipcMain.handle("widget:set-appearance", (_event, value) => {
     const next = normalizeAppearance(value);
     settings.appearance = next;
     saveSettings(settings);
+    refreshTrayMenu();
     return next;
   });
-  ipcMain.handle("widget:get-transparency", () =>
-    Number.isFinite(Number(settings.transparency))
-      ? currentTransparency()
-      : null
-  );
-  ipcMain.handle("widget:set-transparency", (_event, value) => updateTransparency(value));
+
 }
 
 function showWindow() {
@@ -214,6 +238,7 @@ function showWindow() {
   if (mainWindow.isMinimized()) {
     mainWindow.restore();
   }
+  applyContentLayout();
   mainWindow.show();
   mainWindow.focus();
 }
@@ -229,17 +254,6 @@ function updateSetting(key, value) {
   }
 
   refreshTrayMenu();
-}
-
-function updateTransparency(value) {
-  const nextTransparency = clampTransparency(value);
-  settings.transparency = nextTransparency;
-  saveSettings(settings);
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("widget:transparency-changed", nextTransparency);
-  }
-  refreshTrayMenu();
-  return nextTransparency;
 }
 
 function applyWindowFlags() {
@@ -267,36 +281,44 @@ function queueBoundsSave() {
   }
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
+    if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) return;
     settings.bounds = mainWindow.getBounds();
     saveSettings(settings);
   }, 250);
 }
 
-function safeBounds(bounds) {
-  if (
-    !bounds ||
-    !Number.isFinite(bounds.x) ||
-    !Number.isFinite(bounds.y) ||
-    !Number.isFinite(bounds.width) ||
-    !Number.isFinite(bounds.height)
-  ) {
-    return WINDOW_DEFAULTS;
+function calculateWindowLayout(bounds) {
+  const area = selectWorkArea(bounds, screen.getAllDisplays(), screen.getPrimaryDisplay().id);
+  return fitWindowLayout(bounds, area, contentSize);
+}
+
+function scheduleLayout() {
+  clearTimeout(layoutTimer);
+  layoutTimer = setTimeout(applyContentLayout, 60);
+}
+
+function applyContentLayout() {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) return;
+  const previousBounds = mainWindow.getBounds();
+  const next = calculateWindowLayout(previousBounds);
+  applyingLayout = true;
+  try {
+    const [minWidth, minHeight] = mainWindow.getMinimumSize();
+    if (minWidth !== next.minimum.width || minHeight !== next.minimum.height) {
+      mainWindow.setMinimumSize(next.minimum.width, next.minimum.height);
+    }
+    const actualBounds = mainWindow.getBounds();
+    if (["x", "y", "width", "height"].some((key) => actualBounds[key] !== next.bounds[key])) {
+      mainWindow.setBounds(next.bounds);
+    }
+    if (JSON.stringify(currentLayout) !== JSON.stringify(next.layout)) {
+      currentLayout = next.layout;
+      mainWindow.webContents.send("widget:layout-changed", currentLayout);
+    }
+  } finally {
+    applyingLayout = false;
   }
-
-  const area = screen.getPrimaryDisplay().workArea;
-  const intersects =
-    bounds.x < area.x + area.width &&
-    bounds.x + bounds.width > area.x &&
-    bounds.y < area.y + area.height &&
-    bounds.y + bounds.height > area.y;
-
-  return intersects
-    ? bounds
-    : {
-        ...WINDOW_DEFAULTS,
-        x: area.x + Math.round((area.width - WINDOW_DEFAULTS.width) / 2),
-        y: area.y + Math.round((area.height - WINDOW_DEFAULTS.height) / 2)
-      };
+  queueBoundsSave();
 }
 
 function loadSettings() {
@@ -317,22 +339,7 @@ function settingsPath() {
 }
 
 function currentTransparency() {
-  return clampTransparency(settings.transparency);
-}
-
-function transparencyOptions() {
-  const current = currentTransparency();
-  return TRANSPARENCY_OPTIONS.includes(current)
-    ? TRANSPARENCY_OPTIONS
-    : [...TRANSPARENCY_OPTIONS, current].sort((left, right) => left - right);
-}
-
-function clampTransparency(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) {
-    return 18;
-  }
-  return Math.max(0, Math.min(100, Math.round(number)));
+  return themeTransparency(settings.appearance?.theme);
 }
 
 async function findFreePort(start) {
