@@ -1,0 +1,79 @@
+name: Publish v0.4.0 Release
+'on':
+  push:
+    branches:
+    - release/publish-v0.4.0
+permissions:
+  contents: write
+concurrency:
+  group: publish-v0.4.0
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'Kry5ta1/codex-watcher'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+    - name: Checkout exact versioned source
+      uses: actions/checkout@v7
+      with:
+        ref: b3fe2dbdfb4f874593d6dcb01063fe2fd182ef1d
+        persist-credentials: false
+    - name: Check version and release availability
+      shell: pwsh
+      run: "$ErrorActionPreference = 'Stop'\nif ((git rev-parse HEAD) -ne 'b3fe2dbdfb4f874593d6dcb01063fe2fd182ef1d') { throw 'Unexpected source commit' }\n$p = Get-Content package.json | ConvertFrom-Json\n$l = Get-Content package-lock.json -Raw | ConvertFrom-Json -AsHashtable\nif ($p.version -ne '0.4.0' -or $l['version'] -ne '0.4.0' -or $l['packages']['']['version'] -ne '0.4.0') { throw 'Version mismatch' }\n$script = @'\nimport hashlib, json, os, pathlib, time, urllib.request, urllib.error\nREPO = 'Kry5ta1/codex-watcher'\nTAG = 'v0.4.0'\nSOURCE = 'b3fe2dbdfb4f874593d6dcb01063fe2fd182ef1d'\nAPI = 'https://api.github.com/repos/' + REPO\nTOKEN = os.environ['GH_TOKEN']\ndef request(url, method='GET', data=None, binary=False):\n    headers = {'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'}\n    if data is not None:\n        headers['Content-Type'] = 'application/octet-stream' if binary else 'application/json'\n        if not binary: data = json.dumps(data).encode()\n    with urllib.request.urlopen(urllib.request.Request(url, data=data, headers=headers, method=method), timeout=180) as response:\n        return json.load(response)\ndef absent(path):\n    try: request(API + path)\n    except urllib.error.HTTPError as error:\n        if error.code == 404: return\n        raise\n    raise RuntimeError('Refusing to overwrite existing ' + path)\nabsent('/git/ref/tags/' + TAG)\nabsent('/releases/tags/' + TAG)\npage = 1\nwhile True:\n    releases = request(API + '/releases?per_page=100&page=' + str(page))\n    if any(release['tag_name'] == TAG for release in releases):\n        raise RuntimeError('Refusing to duplicate an existing release or draft.')\n    if len(releases) < 100: break\n    page += 1\nif os.environ.get('PREFLIGHT_ONLY') == '1':\n    print('Verified new release/tag do not exist.')\n    raise SystemExit(0)\nfiles = sorted(pathlib.Path('artifacts').glob('*'))\nassert [f.name for f in files] == ['Codex-Watcher-Setup-0.4.0.exe', 'Codex-Watcher-Setup-0.4.0.exe.sha256']\ninstaller, checksum = files\nexpected = checksum.read_text(encoding='utf-8-sig').split()[0]\nassert hashlib.sha256(installer.read_bytes()).hexdigest() == expected\nnotes = '''## Codex Watcher 0.4.0\n\n- 新增美国太平洋参考时钟，12小时制，自动切换PST/PDT。\n- 新增深海女仆与白龙云庭主题，保留经典主题和专注模式；角色为原创AI生成素材。\n- 主题背景透明度：经典15%、深海10%、白龙0%，文字和控件保持清晰。\n- 桌面卡片按内容完整展开，无网页滚动条；动态最小尺寸、小屏等比适配、多显示器位置保护。\n- 保留Plus 5小时额度与已识别高阶订阅周额度显示。\n\nWindows x64安装包及SHA256校验文件。基于已合并的main代码00c0066，仅将版本清单同步为0.4.0后重新构建。51项测试通过。\n'''\nrelease = request(API + '/releases', 'POST', {'tag_name':TAG, 'target_commitish':SOURCE, 'name':'Codex Watcher 0.4.0', 'body':notes, 'draft':True, 'prerelease':False})\nfor file in files:\n    upload = release['upload_url'].split('{')[0] + '?name=' + file.name\n    asset = request(upload, 'POST', file.read_bytes(), True)\n    assert asset['state'] == 'uploaded' and asset['size'] == file.stat().st_size\npublished = request(API + '/releases/' + str(release['id']), 'PATCH', {'draft':False, 'make_latest':'true'})\nassert published['draft'] is False\nref = request(API + '/git/ref/tags/' + TAG)\nassert ref['object']['sha'] == SOURCE, ref\n# Verify the actual publicly downloadable bytes, not just upload metadata.\nfor file in files:\n    asset = next(a for a in published['assets'] if a['name'] == file.name)\n    for attempt in range(5):\n        try:\n            digest = hashlib.sha256()\n            with urllib.request.urlopen(asset['browser_download_url'], timeout=180) as response:\n                while chunk := response.read(1024 * 1024): digest.update(chunk)\n            assert digest.hexdigest() == hashlib.sha256(file.read_bytes()).hexdigest()\n            break\n        except urllib.error.HTTPError as error:\n            if error.code not in [404, 429, 500, 502, 503, 504] or attempt == 4: raise\n            time.sleep(2 ** (attempt + 1))\nprint('Verified release: ' + published['html_url'])\nprint('Verified source commit: ' + SOURCE)\nprint('Installer SHA256: ' + expected)\nwith open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:\n    summary.write(published['html_url'] + '\\n\\nInstaller SHA256: ' + expected + '\\n')\n'@\n$script | Set-Content -LiteralPath \"$env:RUNNER_TEMP/publish040.py\" -Encoding utf8\n$env:PREFLIGHT_ONLY = '1'\npython \"$env:RUNNER_TEMP/publish040.py\"\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 22
+        cache: npm
+    - name: Install dependencies
+      run: npm ci
+    - name: Test
+      run: npm test
+    - name: Build app
+      run: npm run build
+    - name: Build versioned installer
+      shell: pwsh
+      run: '$ErrorActionPreference = ''Stop''
+
+        npx electron-builder --win nsis --x64 --publish never
+
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        $version = (Get-Item ''dist/win-unpacked/Codex Watcher.exe'').VersionInfo.ProductVersion
+
+        if ($version -ne ''0.4.0'') { throw "Executable version mismatch: $version" }
+
+        $files = @(Get-ChildItem dist -Filter ''*Setup*.exe'' -File)
+
+        if ($files.Count -ne 1 -or $files[0].Length -eq 0) { throw ''Invalid installer output'' }
+
+        New-Item -ItemType Directory artifacts -Force | Out-Null
+
+        $asset = ''artifacts/Codex-Watcher-Setup-0.4.0.exe''
+
+        Copy-Item -LiteralPath $files[0].FullName -Destination $asset
+
+        $hash = (Get-FileHash -Algorithm SHA256 $asset).Hash.ToLowerInvariant()
+
+        "$hash  Codex-Watcher-Setup-0.4.0.exe" | Set-Content "$asset.sha256" -Encoding utf8'
+    - name: Retain build artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: Codex-Watcher-0.4.0-windows-x64
+        path: artifacts/*
+        if-no-files-found: error
+        retention-days: 14
+        compression-level: 0
+    - name: Publish new release and verify downloads
+      shell: pwsh
+      run: 'python "$env:RUNNER_TEMP/publish040.py"
+
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }'
+      env:
+        GH_TOKEN: ${{ github.token }}
