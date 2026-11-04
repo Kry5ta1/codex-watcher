@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const { normalizeAppearance } = require("./appearance.cjs");
 const http = require("node:http");
 const net = require("node:net");
 const path = require("node:path");
@@ -191,6 +192,13 @@ function refreshTrayMenu() {
 }
 
 function registerIpc() {
+  ipcMain.handle("widget:get-appearance", () => settings.appearance ? normalizeAppearance(settings.appearance) : null);
+  ipcMain.handle("widget:set-appearance", (_event, value) => {
+    const next = normalizeAppearance(value);
+    settings.appearance = next;
+    saveSettings(settings);
+    return next;
+  });
   ipcMain.handle("widget:get-transparency", () =>
     Number.isFinite(Number(settings.transparency))
       ? currentTransparency()

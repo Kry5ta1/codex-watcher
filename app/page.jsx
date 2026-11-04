@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expiryInfo, relativeChecked } from "../lib/widget.js";
 
+import CompanionTheme, { ClassicArtwork } from "./components/CompanionTheme.jsx";
 import AnnouncementClock from "./components/AnnouncementClock.jsx";
 
 export default function Home() {
@@ -67,13 +68,11 @@ export default function Home() {
           </div>
         </div>
 
+        <CompanionTheme />
+
         <AnnouncementClock />
 
-        <img
-          className="summaryArt"
-          src="/usage-header.png"
-          alt="Codex Watcher 插图"
-        />
+        <ClassicArtwork />
 
         <section className="resetHero">
           <span>当前可用</span>
