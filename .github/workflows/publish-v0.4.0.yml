@@ -47,7 +47,7 @@ jobs:
 
         $version = (Get-Item ''dist/win-unpacked/Codex Watcher.exe'').VersionInfo.ProductVersion
 
-        if ($version -ne ''0.4.0'') { throw "Executable version mismatch: $version" }
+        if ($version -notmatch ''^0\.4\.0(?:\.0)?$'') { throw "Executable version mismatch: $version" }
 
         $files = @(Get-ChildItem dist -Filter ''*Setup*.exe'' -File)
 
