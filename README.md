@@ -16,15 +16,15 @@ It detects the subscription from the quota response: Plus shows the 5-hour quota
 
 It gives short usage guidance based on quota levels and reset expiry times, helping you decide whether to wait or spend a saved reset.
 
-It supports a tray menu, show or hide actions, refresh, always-on-top, position lock, launch at startup, and background transparency control.
+It supports a tray menu, show or hide actions, refresh, always-on-top, position lock, launch at startup, and theme-specific background transparency.
 
-Window position, size, always-on-top, lock, startup, and transparency settings are saved in the local Electron user data directory.
+Window position, size, always-on-top, lock, startup, and appearance settings are saved in the local Electron user data directory.
 
 ## Pacific reference clock
 
 Both the desktop card and web dashboard show a live US Pacific clock in 12-hour format (for example, `10:30:45 AM PST`), with the Pacific date and UTC offset. It uses `America/Los_Angeles`, switching automatically between PST (UTC−8) and PDT (UTC−7). Use it to compare announcements that explicitly say PT/PST/PDT; announcements in other time zones still need conversion.
 
-The clock uses your computer's system time and updates independently every second. It is a time reference, not an automatic reset countdown or a connection to X. Keep your operating system clock synchronized. Compact windows can scroll to keep the tickets and error messages accessible; drag the top title bar to move the card.
+The clock uses your computer's system time and updates independently every second. It is a time reference, not an automatic reset countdown or a connection to X. Keep your operating system clock synchronized. The desktop card expands to its content without scrollbars; drag the top title bar to move it.
 
 ## Requirements
 
@@ -117,6 +117,14 @@ Use the theme selector above the Pacific clock to choose **经典**, **深海** 
 - Desktop choices are stored in the existing local settings file and survive a restart, including a different local server port. Web choices use browser local storage.
 - Controls support keyboard focus and selected-state labels; gentle hover movement respects reduced-motion preferences.
 - No external image requests or additional quota polling are introduced. See [artwork provenance](docs/theme-artwork.md) for reference links and asset details.
+
+## Desktop Size and Transparency
+
+Background transparency follows the selected theme: **classic 15%**, **deep sea 10%**, and **white dragon 0%** (85%, 90%, and 100% background opacity). Text, controls, and quota meters remain fully opaque. Old global transparency values are ignored; the settings panel and tray show the current theme value.
+
+The desktop window starts at **440 × 780 logical pixels** and grows to fit its measured content after rendering. The ordinary minimum width is **420 logical pixels**; minimum height follows the content, including theme artwork, up to three reset tickets, errors, and the open settings panel. Larger manually chosen sizes are preserved. Focus mode can reduce the required minimum height.
+
+There are no desktop scrollbars. If a monitor's usable work area cannot contain the full card, the complete card scales down uniformly to fit. This also handles high Windows display scaling, smaller displays, and moving between monitors. Font and control sizes are smaller in this fallback; use a larger work area or focus mode for better readability. Disconnected-monitor positions and oversized saved windows are clamped back into an available display. The web widget also fits within its viewport but cannot resize the browser window.
 
 ## Privacy and Safety
 
