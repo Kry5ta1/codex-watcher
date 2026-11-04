@@ -109,6 +109,15 @@ Run the production build check.
 npm run build
 ```
 
+## Companion Themes
+
+Use the theme selector above the Pacific clock to choose **经典**, **深海** (navy/cyan whale maid), or **白龙** (pearl/lavender dragon). Both new themes include original AI-generated chibi artwork. The quota, reset tickets, clock, and settings stay separate from the artwork.
+
+- **专注** hides character decorations while preserving the selected palette and all monitoring functions.
+- Desktop choices are stored in the existing local settings file and survive a restart, including a different local server port. Web choices use browser local storage.
+- Controls support keyboard focus and selected-state labels; gentle hover movement respects reduced-motion preferences.
+- No external image requests or additional quota polling are introduced. See [artwork provenance](docs/theme-artwork.md) for reference links and asset details.
+
 ## Privacy and Safety
 
 Codex Watcher only reads the local Codex auth file and calls Codex/ChatGPT quota endpoints.

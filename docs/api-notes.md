@@ -18,3 +18,7 @@
 - `rate_limit` / `rateLimit` 中的 `primary_window` / `primaryWindow` 与 `secondary_window` / `secondaryWindow` 都按 `limit_window_seconds` / `limitWindowSeconds` 识别。18000 秒为 `short`（5H），604800 秒为 `weekly`；不按主次位置推断。
 - 百分比、倒计时和重置时间延续现有 snake_case/camelCase 及数字字符串兼容。缺失百分比保留未知，不补零；缺失目标窗口返回空 `windows` 和警告。
 - 未知、Free、Go、空白或缺失计划不选择窗口。没有真实账号联调数据，本次验证使用合成响应。
+
+## Desktop appearance IPC
+
+Preload exposes only `getAppearance()` and `setAppearance(value)` for these settings. The main process validates every value with `normalizeAppearance` and writes only `{ theme, focusMode }` to `settings.appearance` in the existing local settings file. Theme values are `classic`, `whale`, or `dragon`; unknown values become `classic`, and only literal `true` enables focus mode. A missing saved value returns `null` so the renderer can retain its local fallback. No filesystem paths, tokens, arbitrary settings writes, or network operations are exposed by these methods.

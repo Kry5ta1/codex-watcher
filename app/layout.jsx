@@ -1,4 +1,6 @@
 import "./globals.css";
+import "./themes.css";
+import ThemeProvider from "./components/ThemeProvider.jsx";
 
 export const metadata = {
   title: "Codex Watcher",
@@ -8,7 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body><ThemeProvider>{children}</ThemeProvider></body>
     </html>
   );
 }
