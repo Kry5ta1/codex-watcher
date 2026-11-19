@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import layout from "../desktop/window-layout.cjs";
-const { normalizeContentSize, selectWorkArea, fitWindowLayout } = layout;
+const { normalizeContentSize, selectWorkArea, fitWindowLayout, clipCardRegion } = layout;
 const primary = { id: 1, scaleFactor: 1.5, workArea: { x: 0, y: 0, width: 1280, height: 760 } };
 const secondary = { id: 2, scaleFactor: 2, workArea: { x: -1920, y: -200, width: 1920, height: 1040 } };
 const roomy = { x: 0, y: 0, width: 1920, height: 1200 };
@@ -20,11 +20,30 @@ describe("desktop content sizing", () => {
     assert.deepEqual(result.minimum, { width: 420, height: 980 });
     assert.equal(result.layout.scale, 1);
   });
-  it("preserves extra window space when a theme or ticket list becomes shorter", () => {
+  it("reclaims stale native height when content shrinks without changing the chosen width", () => {
     const result = fitWindowLayout({ x: 40, y: 40, width: 540, height: 1000 }, roomy, { width: 540, height: 600 });
-    assert.equal(result.bounds.height, 1000);
+    assert.equal(result.bounds.height, 600);
     assert.equal(result.bounds.width, 540);
     assert.equal(result.minimum.height, 600);
+  });
+  it("tracks settings open, close, and reopen without retaining extra input area", () => {
+    const area = primary.workArea;
+    const initial = fitWindowLayout(null, area, null);
+    const closed = fitWindowLayout(initial.bounds, area, { width: 440, height: 620 });
+    const opened = fitWindowLayout(closed.bounds, area, { width: 440, height: 920 });
+    const closedAgain = fitWindowLayout(opened.bounds, area, { width: 440, height: 620 });
+    const reopened = fitWindowLayout(closedAgain.bounds, area, { width: 440, height: 920 });
+    assert.equal(closedAgain.bounds.height, 620);
+    assert.equal(closedAgain.layout.scale, 1);
+    assert.deepEqual(reopened, opened);
+  });
+  it("clips the native input region to the scaled card and viewport in DIP", () => {
+    assert.deepEqual(clipCardRegion({ x: 39.5, y: 0, width: 361, height: 700.5 }, [440, 760]),
+      { x: 39, y: 0, width: 362, height: 701 });
+    assert.deepEqual(clipCardRegion({ x: -2.5, y: -1, width: 445, height: 780 }, [440, 760]),
+      { x: 0, y: 0, width: 440, height: 760 });
+    assert.equal(clipCardRegion({ x: 441, y: 0, width: 500, height: 500 }, [440, 760]), null);
+    assert.equal(clipCardRegion({ x: 0, y: 0, width: Infinity, height: 500 }, [440, 760]), null);
   });
   it("enforces a 420 natural pixel floor", () => {
     const result = fitWindowLayout({ x: 0, y: 0, width: 380, height: 620 }, roomy, { width: 420, height: 800 });
