@@ -122,7 +122,7 @@ Use the theme selector above the Pacific clock to choose **经典**, **深海** 
 
 Background transparency follows the selected theme: **classic 15%**, **deep sea 10%**, and **white dragon 0%** (85%, 90%, and 100% background opacity). Text, controls, and quota meters remain fully opaque. Old global transparency values are ignored; the settings panel and tray show the current theme value.
 
-The desktop window starts at **440 × 780 logical pixels** and grows to fit its measured content after rendering. The ordinary minimum width is **420 logical pixels**; minimum height follows the content, including theme artwork, up to three reset tickets, errors, and the open settings panel. Larger manually chosen sizes are preserved. Focus mode can reduce the required minimum height.
+The desktop window starts at **440 × 780 logical pixels** and adjusts its height in both directions to fit its measured content after rendering. The ordinary minimum width is **420 logical pixels**; minimum height follows the content, including theme artwork, up to three reset tickets, errors, and the open settings panel. Larger manually chosen widths are preserved where the work area permits. Focus mode can reduce the required minimum height.
 
 There are no desktop scrollbars. If a monitor's usable work area cannot contain the full card, the complete card scales down uniformly to fit. This also handles high Windows display scaling, smaller displays, and moving between monitors. Font and control sizes are smaller in this fallback; use a larger work area or focus mode for better readability. Disconnected-monitor positions and oversized saved windows are clamped back into an available display. The web widget also fits within its viewport but cannot resize the browser window.
 

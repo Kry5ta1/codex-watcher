@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const { normalizeAppearance, themeTransparency } = require("./appearance.cjs");
-const { normalizeContentSize, selectWorkArea, fitWindowLayout } = require("./window-layout.cjs");
+const { normalizeContentSize, selectWorkArea, fitWindowLayout, clipCardRegion } = require("./window-layout.cjs");
 const http = require("node:http");
 const net = require("node:net");
 const path = require("node:path");
@@ -86,7 +86,7 @@ function createWindow(appUrl) {
     ...initial.bounds,
     backgroundColor: "#00000000",
     frame: false,
-    hasShadow: true,
+    hasShadow: false,
     minHeight: initial.minimum.height,
     minWidth: initial.minimum.width,
     resizable: settings.locked !== true,
@@ -219,6 +219,15 @@ function registerIpc() {
       applyContentLayout();
     }
     return currentLayout;
+  });
+  ipcMain.handle("widget:report-card-region", (event, value) => {
+    if (process.platform !== "win32" || !mainWindow || mainWindow.isDestroyed() ||
+        event.sender !== mainWindow.webContents || mainWindow.isMinimized()) return false;
+    const region = clipCardRegion(value, mainWindow.getContentSize());
+    // Transparent pixels alone still receive pointer input in Electron.
+    if (!region) return false;
+    mainWindow.setShape([region]);
+    return true;
   });
   ipcMain.handle("widget:get-appearance", () => settings.appearance ? normalizeAppearance(settings.appearance) : null);
   ipcMain.handle("widget:set-appearance", (_event, value) => {

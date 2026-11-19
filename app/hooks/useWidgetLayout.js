@@ -7,6 +7,9 @@ export default function useWidgetLayout() {
   const shellRef = useRef(null);
   const [layout, setLayout] = useState({ width: 440, scale: 1 });
   const [fitScale, setFitScale] = useState(1);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const cardRef = useRef(null);
+  const lastRegion = useRef("");
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
 
@@ -15,6 +18,7 @@ export default function useWidgetLayout() {
     let frame;
     let lastMeasurement = "";
     const native = window.codexWidget;
+    setIsDesktop(Boolean(native));
     let nativeRevision = 0;
     const applyLayout = (next) => {
       if (!active || !next || !Number.isFinite(next.width) || next.width < 420 ||
@@ -28,6 +32,7 @@ export default function useWidgetLayout() {
       const width = shellRef.current.offsetWidth;
       const height = shellRef.current.offsetHeight;
       setFitScale(fitContentScale(width, height, window.innerWidth, window.innerHeight, layoutRef.current.scale));
+      reportCardRegion(native, cardRef.current, lastRegion);
       const key = `${width}:${height}`;
       if (key === lastMeasurement) return;
       lastMeasurement = key;
@@ -50,7 +55,9 @@ export default function useWidgetLayout() {
     }).catch(() => {});
     const observer = new ResizeObserver(scheduleMeasure);
     if (shellRef.current) observer.observe(shellRef.current);
+    if (cardRef.current) observer.observe(cardRef.current);
     window.addEventListener("resize", scheduleMeasure);
+    window.addEventListener("focus", scheduleMeasure);
     document.fonts?.ready.then(() => { if (active) scheduleMeasure(); });
     scheduleMeasure();
     return () => {
@@ -59,6 +66,7 @@ export default function useWidgetLayout() {
       observer.disconnect();
       stopListening?.();
       window.removeEventListener("resize", scheduleMeasure);
+      window.removeEventListener("focus", scheduleMeasure);
     };
   }, []);
 
@@ -69,5 +77,21 @@ export default function useWidgetLayout() {
       window.innerWidth, window.innerHeight, layout.scale));
   }, [layout]);
 
-  return { shellRef, shellStyle: { width: layout.width, transform: `scale(${fitScale})` } };
+  useEffect(() => {
+    reportCardRegion(window.codexWidget, cardRef.current, lastRegion);
+  }, [fitScale, layout, isDesktop]);
+
+  return { cardRef, isDesktop, shellRef, shellStyle: { width: layout.width, transform: `scale(${fitScale})` } };
+}
+
+function reportCardRegion(native, card, lastRegion) {
+  if (!native?.reportCardRegion || !card) return;
+  const { x, y, width, height } = card.getBoundingClientRect();
+  const key = `${x}:${y}:${width}:${height}:${window.innerWidth}:${window.innerHeight}:${window.devicePixelRatio}`;
+  if (key === lastRegion.current) return;
+  lastRegion.current = key;
+  const retry = () => { if (lastRegion.current === key) lastRegion.current = ""; };
+  native.reportCardRegion({ x, y, width, height }).then((applied) => {
+    if (!applied) retry();
+  }, retry);
 }

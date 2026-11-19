@@ -50,7 +50,8 @@ function fitWindowLayout(bounds, area, measured) {
   const minWidth = Math.max(1, Math.min(areaWidth, Math.ceil(MIN_WIDTH * scale)));
   const minHeight = Math.max(1, Math.min(areaHeight, Math.ceil(naturalHeight * scale)));
   const width = Math.min(areaWidth, Math.max(Math.round(current.width), Math.ceil(naturalWidth * scale), minWidth));
-  const height = Math.min(areaHeight, Math.max(Math.round(current.height), minHeight));
+  // The native height follows the card in both directions once it is measured.
+  const height = content ? minHeight : Math.min(areaHeight, Math.max(Math.round(current.height), minHeight));
   const x = Math.round(Math.min(Math.max(current.x, area.x), area.x + areaWidth - width));
   const y = Math.round(Math.min(Math.max(current.y, area.y), area.y + areaHeight - height));
   return {
@@ -60,4 +61,13 @@ function fitWindowLayout(bounds, area, measured) {
   };
 }
 
-module.exports = { MIN_WIDTH, DEFAULT_SIZE, normalizeContentSize, selectWorkArea, fitWindowLayout };
+function clipCardRegion(value, [width, height]) {
+  if (!validBounds(value) || ![value.x, value.y, value.width, value.height].every((n) => Math.abs(n) <= 20000)) return null;
+  const x = Math.max(0, Math.floor(value.x));
+  const y = Math.max(0, Math.floor(value.y));
+  const right = Math.min(width, Math.ceil(value.x + value.width));
+  const bottom = Math.min(height, Math.ceil(value.y + value.height));
+  return right > x && bottom > y ? { x, y, width: right - x, height: bottom - y } : null;
+}
+
+module.exports = { MIN_WIDTH, DEFAULT_SIZE, normalizeContentSize, selectWorkArea, fitWindowLayout, clipCardRegion };

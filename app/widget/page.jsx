@@ -20,7 +20,7 @@ export default function Widget() {
   const transparency = themeTransparency(appearance.theme);
   const [now, setNow] = useState(() => new Date());
   const toastTimer = useRef(null);
-  const { shellRef, shellStyle } = useWidgetLayout();
+  const { cardRef, isDesktop, shellRef, shellStyle } = useWidgetLayout();
 
   async function refresh({ notify = false } = {}) {
     setLoading(true);
@@ -70,8 +70,9 @@ export default function Widget() {
 
   return (
     <div className="widgetViewport">
-    <main className="widgetShell" ref={shellRef} style={shellStyle}>
+    <main className={isDesktop ? "widgetShell widgetShellNative" : "widgetShell"} ref={shellRef} style={shellStyle}>
       <section
+        ref={cardRef}
         className={`widgetCard ${status?.nudge?.tier ?? "loading"}`}
         style={{ "--widget-alpha": opacity }}
       >

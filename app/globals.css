@@ -1347,6 +1347,7 @@ p {
   overflow: visible;
   -webkit-app-region: no-drag;
 }
+.widgetShellNative { padding: 0; }
 .widgetHeader { -webkit-app-region: drag; }
 .widgetSettingsPanel {
   position: static;
